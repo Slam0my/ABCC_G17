@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/sra_job%j.out
+#SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/scripts/sra_job%j.out
 #SBATCH --job-name=sra_to_fastq
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
