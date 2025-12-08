@@ -180,10 +180,10 @@ echo "MultiQC completed. Report saved to: $OUT_DIR"
 
 ## Manually annotating and combining our custom genome
 
-### Locally downloaded N. crassa β-glucosidase gh1-1 CDS in gh1_1.fasta, N. crassa cellodextrin transporter cdt-1 in cdt-1.fasta and eGFP sequence
-### SCP to HPC /ref_genome
+## Locally downloaded N. crassa β-glucosidase gh1-1 CDS in gh1_1.fasta, N. crassa cellodextrin transporter cdt-1 in cdt-1.fasta and eGFP sequence
+## SCP to HPC /ref_genome
 
-# Combine cdt1 and egfp together
+## Combine cdt1 and egfp together
 ```{bash}
 nano cdt1_egfp.sh
 
@@ -214,7 +214,7 @@ cat cdt1.seq egfp.seq >> cdt1_egfp.fasta
 echo "End of cdt1_egfp fusion"
 ```
 
-# Combining reference genome, gh1_1, cdt_1 egfp into one fasta
+## Combining reference genome, gh1_1, cdt_1 egfp into one fasta
 ```{bash}
 nano combined_genome.sh
 
@@ -266,3 +266,36 @@ echo "Genome size in Mb: $(echo "$bp / 1000000" | bc -l)"
 echo "Done."
 ```
 
+------
+
+## Indexing 
+```{bash}
+nano star_index_fasta.sh
+
+#!/bin/bash
+#SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/ref_genome/star_index_job%j.out
+#SBATCH --job-name=star_index
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=02:00:00
+#SBATCH --partition=msc_appbio
+
+# Load STAR (CORRECT MODULE)
+module load star/2.7.10b-gcc-13.2.0
+
+echo "Starting STAR genome indexing (FASTA only)"
+
+# Create output directory
+mkdir -p /scratch/grp/msc_appbio/Group17_ABCC/ref_genome/star_index_fasta_only
+
+# Run STAR genome indexing (FASTA ONLY)
+STAR \
+  --runThreadN 4 \
+  --runMode genomeGenerate \
+  --genomeDir /scratch/grp/msc_appbio/Group17_ABCC/ref_genome/star_index_fasta_only \
+  --genomeFastaFiles /scratch/grp/msc_appbio/Group17_ABCC/ref_genome/custom_combined_genome.fasta \
+  --genomeSAindexNbases 10
+
+echo "STAR FASTA-only indexing finished."
+```
