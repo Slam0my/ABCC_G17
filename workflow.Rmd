@@ -1,0 +1,268 @@
+---
+title: "ABCC_Appendix"
+output: html_document
+date: "2025-12-08"
+---
+
+
+## R Markdown
+
+This is an appendix containing code and commands used for workflow documentation of reproducing the bioinformatics analysis of the paper.
+
+## Downloading the data 
+
+```{bash}
+# Created a project directory 
+mkdir /scratch/grp/msc_appbio/Group17_ABCC
+
+# Create a directory for our raw sequencing data 
+mkdir /scratch/grp/msc_appbio/Group17_ABCC/SRA_raw_data
+
+# Obtained the sequencing files from NCBI 
+module load sra-tools/3.0.3-gcc-13.2.0
+
+prefetch SRR1166442 SRR1166443 SRR1166444 SRR1166445 SRR1166446 SRR1166447
+
+
+# Create a directory for our reference genome
+mkdir /scratch/grp/msc_appbio/Group17_ABCC/ref_genome
+
+# Obtained the yeast reference genome
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/146/045/GCF_000146045.2_ R64/GCF_000146045.2_R64_genomic.fna.gz 
+# Unzip 
+gunzip GCF_000146045.2_R64_genomic.fna.gz
+# Rename
+mv GCF_000146045.2_R64_genomic.fna yeast_reference_genome.fna
+
+# Created a directory to store our scripts
+mkdir /scratch/grp/msc_appbio/Group17_ABCC/scripts
+
+```
+
+## Converting raw SRA to fastq format
+
+```{bash}
+nano sra_to_fastq.sh
+
+#!/bin/bash
+
+#SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/scripts/sra_job%j.out
+#SBATCH --job-name=sra_to_fastq
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --time=01:00:00
+#SBATCH --partition=msc_appbio
+
+module load sra-tools/3.0.3-gcc-13.2.0
+
+echo "Start of SRA conversion to fastq"
+
+mkdir -p /scratch/grp/msc_appbio/Group17_ABCC/fastq_files 
+
+cd /scratch/grp/msc_appbio/Group17_ABCC/SRA_raw_data
+
+fasterq-dump --split-files -O /scratch/grp/msc_appbio/Group17_ABCC/fastq_files *.sra
+
+echo "End of fastq conversion"
+```
+
+## QC of the sequences
+```{bash}
+nano fastqc_job.sh
+
+#!/bin/bash
+
+#SBATCH --output=/scratch/grp/msc_appbio/Group17_ABBC/fastq_files/scripts/fastqc_job%j.out
+#SBATCH --job-name=fastq_to_fastqc
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --time=01:00:00
+#SBATCH --partition=msc_appbio
+
+
+module load fastqc/0.11.9-gcc-13.2.0
+
+echo "Start of fastqc"
+
+cd /scratch/grp/msc_appbio/Group17_ABCC/fastq_files/
+
+fastqc -o /scratch/grp/msc_appbio/Group17_ABCC/fastqc_report *.fastq
+
+echo "End of fastqc"
+```
+
+## Trimming 
+```{bash}
+#!/bin/bash
+
+#SBATCH --output=/scratch/grp/msc_appbio/group17_ABCC/trimming_job_%j.out
+#SBATCH --job-name=trimming
+#SBATCH --time=01:00:00
+#SBATCH --nodes=1
+
+module load py-cutadapt/4.4-gcc-13.2.0-python-3.11.6
+
+FASTQ_DIR=/scratch/grp/msc_appbio/Group17_ABCC/fastq_files
+
+OUTPUT_DIR=/scratch/grp/msc_appbio/Group17_ABCC/trimmed
+mkdir -p $OUTPUT_DIR
+
+ADAPTER="AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"
+
+SAMPLES=(
+SRR1166442
+SRR1166443
+SRR1166444
+SRR1166445
+SRR1166446
+SRR1166447
+)
+
+for s in "${SAMPLES[@]}"; do
+    if [[ ! -f "${FASTQ_DIR}/${s}.fastq" ]]; then
+        echo "Warning: ${s}.fastq not found, skipping..."
+        continue
+    fi
+
+    echo "Trimming adapters from $s.fastq..."
+    cutadapt -a $ADAPTER -o ${OUTPUT_DIR}/${s}_trimmed.fastq ${FASTQ_DIR}/${s}.fastq --cores=4
+    echo "Finished $s"
+done
+
+echo "All samples trimmed!"
+```
+
+## QC on these trimmed reads
+```{bash}
+nano trimmed_fastqc.sh
+
+#!/bin/bash
+#SBATCH --output=/scratch/grp/msc_appbio/group17_ABCC/trimmed_fastqc_%j.out
+#SBATCH --job-name=trimmed_fastqc
+#SBATCH --time=01:00:00
+#SBATCH --nodes=1
+
+module load fastqc/0.11.9-gcc-13.2.0
+
+echo "start of fastqc"
+
+cd /scratch/grp/msc_appbio/Group17_ABCC/trimmed
+
+fastqc *_trimmed.fastq
+
+echo "end of fastqc"
+
+
+nano trimmed_multiqc.sh
+
+#!/bin/bash
+#SBATCH --output=/scratch/grp/msc_appbio/group17_ABCC/trimmed_multiqc_%j.out
+#SBATCH --job-name=trimmed_multiqc
+#SBATCH --time=01:00:00
+#SBATCH --nodes=1
+
+module load py-multiqc/1.15-gcc-13.2.0-python-3.11.6
+
+echo "Running Multiqc on trimmed files"
+
+TRIM_DIR=/scratch/grp/msc_appbio/group17_ABCC/trimmed
+
+OUT_DIR=/scratch/grp/msc_appbio/group17_ABCC/trimmed_multiqc
+
+mkdir -p /scratch/grp/msc_appbio/group17_ABCC/trimmed_multiqc
+
+multiqc $TRIM_DIR -o $OUT_DIR
+
+echo "MultiQC completed. Report saved to: $OUT_DIR"
+```
+
+------
+
+## Manually annotating and combining our custom genome
+
+### Locally downloaded N. crassa β-glucosidase gh1-1 CDS in gh1_1.fasta, N. crassa cellodextrin transporter cdt-1 in cdt-1.fasta and eGFP sequence
+### SCP to HPC /ref_genome
+
+# Combine cdt1 and egfp together
+```{bash}
+nano cdt1_egfp.sh
+
+#!/bin/bash
+
+#SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/ref_genome/cdt1_egfp_job%j.out
+#SBATCH --job-name=make_cdt1_egfp
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --time=01:00:00
+#SBATCH --partition=msc_appbio
+
+echo "Start of cdt1_egfp fusion"
+
+cd /scratch/grp/msc_appbio/Group17_ABCC/ref_genome/
+
+# Step 1: remove stop codon from cdt1_CDS
+sed '1d' cdt-1_CDS.fasta | tr -d '\n' | sed 's/...$//' > cdt1_noSTOP.fasta
+
+# Step 2: convert sequences to one-line format
+grep -v "^>" cdt1_noSTOP.seq | tr -d '\n' > cdt1.fast
+grep -v "^>" EGFP_CDS.fasta   | tr -d '\n' > egfp.fasta
+
+# Step 3: create the fused cdt1_egfp FASTA
+echo ">cdt1_egfp" > cdt1_egfp.fasta
+cat cdt1.seq egfp.seq >> cdt1_egfp.fasta
+
+echo "End of cdt1_egfp fusion"
+```
+
+# Combining reference genome, gh1_1, cdt_1 egfp into one fasta
+```{bash}
+nano combined_genome.sh
+
+#!/bin/bash
+
+#SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/ref_genome/combined_ref_job%j.out
+#SBATCH --job-name=make_combined_ref
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --time=00:30:00
+#SBATCH --partition=msc_appbio
+
+echo "Start combining genome"
+
+cd /scratch/grp/msc_appbio/Group17_ABCC/ref_genome
+
+cat yeast_reference_genome.fna \
+    gh1_1_CDS.fasta \
+    cdt1_egfp.fasta \
+    > custom_combined_genome.fasta
+
+echo "Done combining genome"
+```
+
+## Checking the genome size 
+```{bash}
+nano genome_size.sh 
+
+#!/bin/bash
+#SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/ref_genome/genome_size_job%j.out
+#SBATCH --job-name=genome_size
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --time=00:05:00
+#SBATCH --partition=msc_appbio
+
+echo "Checking genome size..."
+
+cd /scratch/grp/msc_appbio/Group17_ABCC/ref_genome/
+
+# Count total base pairs (no headers)
+bp=$(grep -v "^>" combined_yeast_ref_genome.fasta | tr -d '\n' | wc -c)
+
+echo "Total base pairs (bp): $bp"
+
+# Convert to megabases (Mb) manually — printed in one line
+echo "Genome size in Mb: $(echo "$bp / 1000000" | bc -l)"
+
+echo "Done."
+```
+
