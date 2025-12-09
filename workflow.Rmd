@@ -266,7 +266,7 @@ echo "Genome size in Mb: $(echo "$bp / 1000000" | bc -l)"
 echo "Done."
 ```
 
-# Customise the genes 
+# Manually customise the genes 
 ```{bash}
 #!/bin/bash
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/ref_genome/gtf_custom_genes_job%j.out
@@ -384,4 +384,5 @@ done
 echo "End of cleaning the trimmed and alignment"
 
 ```
+
 
