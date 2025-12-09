@@ -15,8 +15,10 @@ mkdir /scratch/grp/msc_appbio/Group17_ABCC
 # Create a directory for our raw sequencing data 
 mkdir /scratch/grp/msc_appbio/Group17_ABCC/SRA_raw_data
 
+cd /scratch/grp/msc_appbio/Group17_ABCC/SRA_raw_data
+
 # Obtained the sequencing files from NCBI 
-# SRA toolkit
+# SRA toolkit for prefetch 
 module load sra-tools/3.0.3-gcc-13.2.0
 
 prefetch SRR1166442 SRR1166443 SRR1166444 SRR1166445 SRR1166446 SRR1166447
@@ -24,8 +26,8 @@ prefetch SRR1166442 SRR1166443 SRR1166444 SRR1166445 SRR1166446 SRR1166447
 
 # Create a directory for our reference genome
 mkdir /scratch/grp/msc_appbio/Group17_ABCC/ref_genome
-
-# Obtained the yeast reference genome
+cd /scratch/grp/msc_appbio/Group17_ABCC/ref_genome
+# Obtained the yeast reference genome from 
 wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/146/045/GCF_000146045.2_ R64/GCF_000146045.2_R64_genomic.fna.gz 
 # Unzip 
 gunzip GCF_000146045.2_R64_genomic.fna.gz
@@ -304,7 +306,7 @@ echo "Custom genes successfully added to gtf."
 
 ------
 
-## Indexing 
+## Indexing with STAR
 
 indexing.sh
 ```{bash}
@@ -339,7 +341,7 @@ echo "End of star indexing"
 
 ------
 
-## Alignment 
+## Alignment with STAR
 
 alignment.sh
 ```{bash}
@@ -385,6 +387,156 @@ done
 
 echo "End of cleaning the trimmed and alignment"
 
+```
+
+------
+
+#Generating Count Data with featureCounts
+gene_counts.sh
+
+```{r}
+#!/bin/bash
+#SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/alignment_star/featureCounts_job%j.out
+#SBATCH --job-name=gene_counts
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=01:00:00
+#SBATCH --partition=msc_appbio
+
+# Load Subread (featureCounts)
+module load subread/2.0.2-gcc-13.2.0
+
+echo "Starting gene counting with featureCounts"
+
+# Move to alignment directory
+cd /scratch/grp/msc_appbio/Group17_ABCC/alignment_star
+
+# Run featureCounts correctly
+featureCounts \
+  -a /scratch/grp/msc_appbio/Group17_ABCC/ref_genome/custom_combined_annotation.gtf \
+  -o gene_counts.txt \
+  *.bam
+
+echo "featureCounts gene counting finished."
+```
+
+------
+#R
+With the count table, gene_counts.txt was downloaded locally from the HPC to work with in R.
+
+#Differential Expression Analysis with DESeq2
+
+```{r}
+
+library(data.table)
+library(DESeq2)
+
+# Set base directory 
+setwd("C:/Users/sarah/OneDrive/Desktop/KCL/APCC/Group") 
+
+# Import the data from local
+data <- fread("C:/Users/sarah/Downloads/gene_counts.txt", header = TRUE)
+
+# Create a numeric matrix with the load counts
+counts <- as.matrix(data[, 7:12, with=FALSE])
+rownames(counts) <- data$Geneid
+
+grown_condition <- factor(c("glucose", "glucose","glucose", "cellobiose", "cellobiose", "cellobiose"))
+col_data<- data.frame(row.names = colnames(counts), grown_condition)
+
+#Create the DESeqDataSet object
+data <- DESeqDataSetFromMatrix(
+    countData = counts, 
+    colData = col_data,
+    design = ~ grown_condition 
+)
+
+# DESeq 
+data <- DESeq(data)
+results_deseq <- results(data, contrast = c("grown_condition", "cellobiose", "glucose"))
+
+# Save as a csv
+write.csv(results_deseq, file = "DESEQ_results.csv", row.names = FALSE)
+
+# Normalised counts
+norm_counts <- counts(data, normalized = TRUE)
+
+# Save as a csv 
+write.csv(norm_counts, file = "normalised_counts.csv", row.names = TRUE)
+
+```
+
+
+# Significant Genes 
+Calculate the number of differentially expressed genes
+```{r}
+library(dplyr)
+
+results_df <- as.data.frame(results_deseq)
+results_df <- na.omit(results_df) # remove NAs if there are
+
+FDR_CUTOFF <- 0.001 # Define our cutoff for FDR
+LOG2FC_CUTOFF <- 1.0 # Define our log2 2-fold change cutoff
+
+#Significant genes
+sig_genes <- results_df[which(results_df$padj < FDR_CUTOFF & abs(results_df$log2FoldChange) >= LOG2FC_CUTOFF), ]
+
+# Number of differentially expressed genes
+num_sig <- nrow(sig_genes)
+
+# Sae as a csv
+write.csv(sig_genes, file="Significant_Genes.csv", row.names = TRUE)
+```
+
+
+
+# Volcano Plot
+```{r}
+library(ggplot2)
+
+# Create our Y axis with -log10 padj
+results_df$log10Padj <- -log10(results_df$padj)
+
+# Using the cutoffs for colouring on graph
+results_df <- results_df %>%
+  mutate(DiffExpression = case_when(
+    log2FoldChange >= LOG2FC_CUTOFF & padj <= FDR_CUTOFF ~ "Upregulated",
+    log2FoldChange <= -LOG2FC_CUTOFF & padj <= FDR_CUTOFF ~ "Downregulated",
+    TRUE ~ "Not Significant"
+  ))
+
+# Creating our volcano plot
+volcano_plot <- ggplot(results_df, 
+                       aes(x = log2FoldChange, 
+                           y = log10Padj, 
+                           color = DiffExpression)) +
+  geom_point(size = 1, alpha = 0.7) +
+  scale_color_manual(values = c("Upregulated" = "red", #significant 
+                                "Downregulated" = "red", 
+                                "Not Significant" = "black")) +
+
+  geom_hline(yintercept = -log10(FDR_CUTOFF), # line for FDR cutoff
+             linetype = "dashed", 
+             color = "grey") +
+  geom_vline(xintercept = c(-LOG2FC_CUTOFF, LOG2FC_CUTOFF), 
+             linetype = "dashed", # line for log2 cutoff
+             color = "grey") +
+  
+  labs(
+    title = "Volcano Plot",
+    subtitle = paste(num_sig, "Differentially Expressed Genes"),
+    x = expression("log2 Fold Change (Cellobiose/Glucose) with DESeq"),
+    y = expression("-log10 Adjusted P-value")
+  ) +
+  
+  theme_minimal() +
+  theme(legend.title = element_blank())
+
+print(volcano_plot)
+
+# Save the plot
+ggsave("Volcano_Plot.png", plot = volcano_plot, width = 7, height = 7, units = "in")
 ```
 
 
