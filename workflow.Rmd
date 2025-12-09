@@ -19,6 +19,7 @@ mkdir /scratch/grp/msc_appbio/Group17_ABCC
 mkdir /scratch/grp/msc_appbio/Group17_ABCC/SRA_raw_data
 
 # Obtained the sequencing files from NCBI 
+# SRA toolkit
 module load sra-tools/3.0.3-gcc-13.2.0
 
 prefetch SRR1166442 SRR1166443 SRR1166444 SRR1166445 SRR1166446 SRR1166447
@@ -41,9 +42,8 @@ mkdir /scratch/grp/msc_appbio/Group17_ABCC/scripts
 
 ## Converting raw SRA to fastq format
 
+sra_to_fastq.sh
 ```{bash}
-nano sra_to_fastq.sh
-
 #!/bin/bash
 
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/scripts/sra_job%j.out
@@ -67,9 +67,9 @@ echo "End of fastq conversion"
 ```
 
 ## QC of the sequences
-```{bash}
-nano fastqc_job.sh
 
+fastqc_job.sh
+```{bash}
 #!/bin/bash
 
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABBC/fastq_files/scripts/fastqc_job%j.out
@@ -92,6 +92,8 @@ echo "End of fastqc"
 ```
 
 ## Trimming 
+
+trimming.sh
 ```{bash}
 #!/bin/bash
 
@@ -133,9 +135,9 @@ echo "All samples trimmed!"
 ```
 
 ## QC on these trimmed reads
-```{bash}
-nano trimmed_fastqc.sh
 
+trimmed_fastqc.sh
+```{bash}
 #!/bin/bash
 #SBATCH --output=/scratch/grp/msc_appbio/group17_ABCC/trimmed_fastqc_%j.out
 #SBATCH --job-name=trimmed_fastqc
@@ -151,10 +153,10 @@ cd /scratch/grp/msc_appbio/Group17_ABCC/trimmed
 fastqc *_trimmed.fastq
 
 echo "end of fastqc"
+```
 
-
-nano trimmed_multiqc.sh
-
+trimmed_multiqc.sh
+```{bash}
 #!/bin/bash
 #SBATCH --output=/scratch/grp/msc_appbio/group17_ABCC/trimmed_multiqc_%j.out
 #SBATCH --job-name=trimmed_multiqc
@@ -180,13 +182,14 @@ echo "MultiQC completed. Report saved to: $OUT_DIR"
 
 ## Manually annotating and combining our custom genome
 
-## Locally downloaded N. crassa β-glucosidase gh1-1 CDS in gh1_1.fasta, N. crassa cellodextrin transporter cdt-1 in cdt-1.fasta and eGFP sequence
-## SCP to HPC /ref_genome
+Locally downloaded N. crassa β-glucosidase gh1-1 CDS in gh1_1.fasta, N. crassa cellodextrin transporter cdt-1 in cdt-1.fasta and eGFP sequence.
+Then SCP to HPC in /scratch/grp/msc_appbio/Group17_ABCC/ref_genome
+
 
 ## Combine cdt1 and egfp together
-```{bash}
-nano cdt1_egfp.sh
 
+cdt1_egfp.sh
+```{bash}
 #!/bin/bash
 
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/ref_genome/cdt1_egfp_job%j.out
@@ -214,10 +217,10 @@ cat cdt1.seq egfp.seq >> cdt1_egfp.fasta
 echo "End of cdt1_egfp fusion"
 ```
 
-## Combining reference genome, gh1_1, cdt_1 egfp into one fasta
-```{bash}
-nano combined_genome.sh
+## Manually combining the reference genome, gh1_1, cdt_1 egfp into one fasta
 
+combined_genome.sh
+```{bash}
 #!/bin/bash
 
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/ref_genome/combined_ref_job%j.out
@@ -240,9 +243,9 @@ echo "Done combining genome"
 ```
 
 ## Checking the genome size 
-```{bash}
-nano genome_size.sh 
 
+genome_size.sh 
+```{bash}
 #!/bin/bash
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/ref_genome/genome_size_job%j.out
 #SBATCH --job-name=genome_size
@@ -266,7 +269,8 @@ echo "Genome size in Mb: $(echo "$bp / 1000000" | bc -l)"
 echo "Done."
 ```
 
-# Manually customise the genes 
+# Manually annotate the genes 
+gtf_custom_genes.sh
 ```{bash}
 #!/bin/bash
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/ref_genome/gtf_custom_genes_job%j.out
@@ -300,12 +304,13 @@ EOF
 echo "Custom genes successfully added to gtf."
 ```
 
+
 ------
 
 ## Indexing 
-```{bash}
-nano  indexing.sh
 
+indexing.sh
+```{bash}
 #!/bin/bash
 #SBATCH --job-name=star_index_custom
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/scripts/index_custom_%j.out
@@ -338,9 +343,9 @@ echo "End of star indexing"
 ------
 
 ## Alignment 
-```{bash}
-nano alignment.sh
 
+alignment.sh
+```{bash}
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/scripts/star_clean_align_%j.out
 #SBATCH --time=08:00:00
 #SBATCH --nodes=1
