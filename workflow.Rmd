@@ -539,6 +539,25 @@ print(volcano_plot)
 ggsave("Volcano_Plot.png", plot = volcano_plot, width = 7, height = 7, units = "in")
 ```
 
+#RPKM Calculation
+```{r}
+gene_length_bp <- gcdata$Length
+gene_length_kb <- gene_length_bp / 1000
+
+raw_counts<- counts(data, normalized=FALSE)
+# Total reads per library
+total_counts <- colSums(raw_counts)
+
+# Divide counts by gene length (kb)
+rpkm <- sweep(counts, 1, gene_length_kb, FUN="/")
+# Divide by library totals (per million)
+rpkm <- sweep(rpkm, 2, total_counts/1e6, FUN="/")
+
+# log2 for visualization
+log2_rpkm <- log2(rpkm + 1)
+write.csv(log2_rpkm, file="log2_rpkm_normalised.csv", row.names=TRUE)
+
+```
 
 
 
