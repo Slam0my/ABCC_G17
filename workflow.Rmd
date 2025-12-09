@@ -4,9 +4,6 @@ output: html_document
 date: "2025-12-08"
 ---
 
-
-## R Markdown
-
 This is an appendix containing code and commands used for workflow documentation of reproducing the bioinformatics analysis of the paper.
 
 ## Downloading the data 
@@ -389,6 +386,7 @@ done
 echo "End of cleaning the trimmed and alignment"
 
 ```
+
 
 
 
