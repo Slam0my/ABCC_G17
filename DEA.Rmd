@@ -1,0 +1,38 @@
+---
+title: "Differential Expression Analysis"
+output: html_document
+date: "2025-12-09"
+---
+
+#Differential Expression Analysis
+
+```{r}
+# Imported the files from HPC to local
+
+library(data.table)
+library(DESeq2)
+
+data <- fread("C:/Users/sarah/Downloads/gene_counts.txt", header = TRUE)
+gene_length<- data$Length
+
+# Create a numeric matrix with the load counts
+counts <- as.matrix(data[, 7:12, with=FALSE])
+rownames(counts) <- data$Geneid
+
+grown_condition <- factor(c("glucose", "glucose","glucose", "cellobiose", "cellobiose", "cellobiose"))
+col_data<- data.frame(row.names = colnames(counts), grown_condition)
+
+#Create the DESeqDataSet object
+data <- DESeqDataSetFromMatrix(
+    countData = counts, 
+    colData = col_data,
+    design = ~ grown_condition 
+)
+
+# Run the main differential expression pipeline
+dds <- DESeq(data)
+results<- results(dds)
+
+```
+
+
