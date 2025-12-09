@@ -12,8 +12,9 @@ date: "2025-12-09"
 library(data.table)
 library(DESeq2)
 
+setwd("C:/Users/sarah/OneDrive/Desktop/KCL/APCC/Group")
+
 data <- fread("C:/Users/sarah/Downloads/gene_counts.txt", header = TRUE)
-gene_length<- data$Length
 
 # Create a numeric matrix with the load counts
 counts <- as.matrix(data[, 7:12, with=FALSE])
@@ -29,9 +30,16 @@ data <- DESeqDataSetFromMatrix(
     design = ~ grown_condition 
 )
 
-# Run the main differential expression pipeline
-dds <- DESeq(data)
-results<- results(dds)
+# DESeq 
+data <- DESeq(data)
+results_deseq <- results(data)
+write.csv(results_deseq, file = "DESEQ_results.csv", row.names = FALSE)
+
+
+# Normalised counts
+norm_counts <- counts(data, normalized = TRUE)
+# Create a csv 
+write.csv(norm_counts, file = "normalised_counts.csv", row.names = TRUE)
 
 ```
 
