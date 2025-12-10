@@ -241,7 +241,7 @@ cat yeast_reference_genome.fna \
 echo "Done combining genome"
 ```
 
-## Checking the genome size 
+## Checking the manually combined genome size 
 
 genome_size.sh 
 ```{bash}
@@ -302,7 +302,6 @@ EOF
 
 echo "Custom genes successfully added to gtf."
 ```
-
 
 ------
 
@@ -391,10 +390,10 @@ echo "End of cleaning the trimmed and alignment"
 
 ------
 
-#Generating Count Data with featureCounts
-gene_counts.sh
+## Generating Count Data with featureCounts
 
-```{r}
+gene_counts.sh
+```{bash}
 #!/bin/bash
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/alignment_star/featureCounts_job%j.out
 #SBATCH --job-name=gene_counts
@@ -422,10 +421,10 @@ echo "featureCounts gene counting finished."
 ```
 
 ------
-#R
+# R
 With the count table, gene_counts.txt was downloaded locally from the HPC to work with in R.
 
-#Differential Expression Analysis with DESeq2
+## Differential Expression Analysis with DESeq2
 
 ```{r}
 
@@ -467,8 +466,7 @@ write.csv(norm_counts, file = "normalised_counts.csv", row.names = TRUE)
 
 ```
 
-
-# Significant Genes 
+## Significant Genes 
 Calculate the number of differentially expressed genes
 ```{r}
 library(dplyr)
@@ -489,9 +487,7 @@ num_sig <- nrow(sig_genes)
 write.csv(sig_genes, file="Significant_Genes.csv", row.names = TRUE)
 ```
 
-
-
-# Volcano Plot
+## Volcano Plot
 ```{r}
 library(ggplot2)
 
@@ -539,7 +535,8 @@ print(volcano_plot)
 ggsave("Volcano_Plot.png", plot = volcano_plot, width = 7, height = 7, units = "in")
 ```
 
-#RPKM Calculation
+
+# RPKM Calculation
 ```{r}
 gene_length_bp <- gcdata$Length
 gene_length_kb <- gene_length_bp / 1000
@@ -558,6 +555,3 @@ log2_rpkm <- log2(rpkm + 1)
 write.csv(log2_rpkm, file="log2_rpkm_normalised.csv", row.names=TRUE)
 
 ```
-
-
-
