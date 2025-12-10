@@ -1,8 +1,7 @@
 ---
 title: "ABCC_Group17_Appendix"
 output:
-  pdf_document: default
-  html_document: default
+  word_document:
 date: "2025-12-08"
 ---
 
@@ -432,7 +431,7 @@ With the count table, gene_counts.txt was downloaded locally from the HPC to wor
 
 ## Differential Expression Analysis with DESeq2
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 
 library(data.table)
 library(DESeq2)
@@ -474,7 +473,7 @@ write.csv(norm_counts, file = "normalised_counts.csv", row.names = TRUE)
 
 ## Significant Genes 
 Calculate the number of differentially expressed genes
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(dplyr)
 
 results_df <- as.data.frame(results_deseq)
@@ -494,7 +493,7 @@ write.csv(sig_genes, file="Significant_Genes.csv", row.names = TRUE)
 ```
 
 ## Volcano Plot
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(ggplot2)
 
 # Create our Y axis with -log10 padj
