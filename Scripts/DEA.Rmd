@@ -1,0 +1,135 @@
+---
+title: "Differential Expression Analysis"
+output: html_document
+date: "2025-12-09"
+---
+
+## Differential Expression Analysis with DESeq2
+
+```{r, message=FALSE, warning=FALSE}}
+# Load libraries
+library(data.table)
+library(DESeq2)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+```
+
+```{r}
+
+# Set base directory 
+setwd("C:/Users/sarah/OneDrive/Desktop/KCL/APCC/Group") 
+
+# Import the data from local
+gcdata <- fread("C:/Users/sarah/Downloads/gene_counts.txt", header = TRUE)
+
+# Create a numeric matrix with the load counts in columns 7 to 12
+counts <- as.matrix(gcdata[, 7:12, with=FALSE])
+rownames(counts) <- gcdata$Geneid
+
+# Define sample conditions
+grown_condition <- factor(c("glucose", "glucose","glucose", "cellobiose", "cellobiose", "cellobiose"))
+col_data<- data.frame(row.names = colnames(counts), grown_condition)
+
+#Create the DESeq2 dataset 
+data <- DESeqDataSetFromMatrix(
+    countData = counts, 
+    colData = col_data,
+    design = ~ grown_condition 
+)
+
+# Run DESeq 
+data <- DESeq(data)
+
+# Contrast cellobiose vs glucose
+results_deseq <- results(data, contrast = c("grown_condition", "cellobiose", "glucose"))
+
+# Save as a csv
+write.csv(results_deseq, file = "DESEQ_results.csv", row.names = FALSE)
+
+# Normalised counts
+norm_counts <- counts(data, normalized = TRUE)
+
+# Save as a csv 
+write.csv(norm_counts, file = "normalised_counts.csv", row.names = TRUE)
+
+```
+
+## Significant Genes 
+Calculate the number of differentially expressed genes
+```{r,}
+
+results_df <- as.data.frame(results_deseq)
+results_df <- na.omit(results_df) # remove NAs if there are
+
+# Define thresholds
+FDR_CUTOFF <- 0.001 # Define our cutoff for FDR
+LOG2FC_CUTOFF <- 1.0 # Define our log2 2-fold change cutoff
+
+# Add regulation label
+results_df$regulation <- ifelse(
+  results_df$padj < FDR_CUTOFF & results_df$log2FoldChange >= LOG2FC_CUTOFF, "Up",
+  ifelse(results_df$padj < FDR_CUTOFF & results_df$log2FoldChange <= -LOG2FC_CUTOFF, "Down",
+         "Not Significant")
+)
+
+#Significant genes (Up and Down combined)
+sig_genes <- results_df[results_df$regulation != "Not Significant", ]
+write.csv(sig_genes, "Significant_Genes.csv", row.names = TRUE)
+
+# Save Upregulated genes only as csv
+up_genes <- results_df[results_df$regulation == "Up", ]
+write.csv(up_genes, "Upregulated_Genes.csv", row.names = TRUE)
+
+# Save Downregulated genes only as csv
+down_genes <- results_df[results_df$regulation == "Down", ]
+write.csv(down_genes, "Downregulated_Genes.csv", row.names = TRUE)
+
+# Save complete annotated results table as csv
+write.csv(results_df, "Full_DESeq2_Results_Annotated.csv", row.names = TRUE)
+
+# Number of differentially expressed genes
+num_sig <- nrow(sig_genes)
+```
+
+## Volcano Plot
+```{r}
+
+# Create our Y axis with -log10 padj
+results_df$neglog10Padj <- -log10(results_df$padj)
+
+# Creating our volcano plot
+volcano_plot <- ggplot(results_df, 
+                       aes(x = log2FoldChange, 
+                           y = neglog10Padj, 
+                           color = regulation)) +
+  
+  geom_point(size = 1, alpha = 0.7) +
+  scale_color_manual(values = c("Up" = "red", #significant 
+                                "Down" = "red", 
+                                "Not Significant" = "black")) +
+
+  # Cut off lines
+  geom_hline(yintercept = -log10(FDR_CUTOFF), # line for FDR cutoff
+             linetype = "dashed", 
+             color = "grey") +
+  geom_vline(xintercept = c(-LOG2FC_CUTOFF, LOG2FC_CUTOFF), 
+             linetype = "dashed", # line for log2 cutoff
+             color = "grey") +
+  
+  labs(
+    title = "Volcano Plot",
+    subtitle = paste(num_sig, "Differentially Expressed Genes"),
+    x = expression("log2 Fold Change (Cellobiose/Glucose) with DESeq"),
+    y = expression("-log10 Adjusted P-value")
+  ) +
+  
+  theme_minimal() +
+  theme(legend.title = element_blank())
+
+print(volcano_plot)
+
+# Save the plot
+ggsave("Volcano_Plot.png", plot = volcano_plot, width = 7, height = 7, units = "in")
+```
