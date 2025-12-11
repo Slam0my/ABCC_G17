@@ -1,0 +1,127 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Functional_Enrichment_GO_Analysis
+```{r}
+library(clusterProfiler)
+library(org.Sc.sgd.db)
+library(enrichplot)
+```
+
+```{r}
+# Create gene lists 
+genes_all  <- rownames(sig_genes)
+genes_up   <- rownames(up_genes)
+genes_down <- rownames(down_genes)
+
+```
+```{r}
+# Enrich GO Biological Process
+ego_all <- enrichGO(
+  gene          = genes_all,
+  OrgDb         = org.Sc.sgd.db,
+  keyType       = "ORF",
+  ont           = "BP",
+  pAdjustMethod = "BH",
+  qvalueCutoff  = 0.05
+)
+
+ego_up <- enrichGO(
+  gene          = genes_up,
+  OrgDb         = org.Sc.sgd.db,
+  keyType       = "ORF",
+  ont           = "BP",
+  pAdjustMethod = "BH",
+  qvalueCutoff  = 0.05
+)
+
+ego_down <- enrichGO(
+  gene          = genes_down,
+  OrgDb         = org.Sc.sgd.db,
+  keyType       = "ORF",
+  ont           = "BP",
+  pAdjustMethod = "BH",
+  qvalueCutoff  = 0.05
+)
+```
+
+```{r}
+# Save results as csv 
+write.csv(as.data.frame(ego_all),  "GO_BP_All.csv",   row.names = FALSE)
+write.csv(as.data.frame(ego_up),   "GO_BP_Up.csv",    row.names = FALSE)
+write.csv(as.data.frame(ego_down), "GO_BP_Down.csv",  row.names = FALSE)
+
+```
+
+```{r}
+# view dotplots for GO 
+dotplot(ego_up, showCategory = 15) + ggtitle("GO BP: Upregulated Genes")
+dotplot(ego_down, showCategory = 15) + ggtitle("GO BP: Downregulated Genes")
+```
+
+# making Function Enrichmend GO analysis table 
+
+```{r}
+library(tidyr)
+library(dplyr)
+```
+
+```{r}
+# UPREGULATED GO RESULTS ----
+go_up_df <- as.data.frame(ego_up) %>%
+  tidyr::separate(GeneRatio, into = c("k", "k_total"), sep = "/", convert = TRUE) %>%
+  tidyr::separate(BgRatio,  into = c("f", "f_total"), sep = "/", convert = TRUE) %>%
+  dplyr::select(Description, p.adjust, k, f, geneID) %>%
+  dplyr::rename(
+    `GO Term` = Description,
+    `p-value (adjusted)` = p.adjust,
+    `k (genes in cluster)` = k,
+    `f (genes in category)` = f,
+    `Genes in category from cluster` = geneID
+  )
+
+# DOWNREGULATED GO RESULTS ----
+go_down_df <- as.data.frame(ego_down) %>%
+  tidyr::separate(GeneRatio, into = c("k", "k_total"), sep = "/", convert = TRUE) %>%
+  tidyr::separate(BgRatio, into = c("f", "f_total"), sep = "/", convert = TRUE) %>%
+  dplyr::select(Description, p.adjust, k, f, geneID) %>%
+  dplyr::rename(
+    `GO Term` = Description,
+    `p-value (adjusted)` = p.adjust,
+    `k (genes in cluster)` = k,
+    `f (genes in category)` = f,
+    `Genes in category from cluster` = geneID
+  )
+```
+```{r}
+# Save tables as csv
+write.csv(go_up_df, "GO_BP_Up_Table.csv", row.names = FALSE)
+write.csv(go_down_df, "GO_BP_Down_Table.csv", row.names = FALSE)
+```
+
+# Creating a combined functional Enrichment GO table
+```{r}
+# Header for UP genes
+up_header <- as.data.frame(matrix("", nrow = 1, ncol = ncol(go_up_df)))
+colnames(up_header) <- colnames(go_up_df)
+up_header[1, 1] <- "GO terms for UPREGULATED genes"
+
+# Header for DOWN genes
+down_header <- as.data.frame(matrix("", nrow = 1, ncol = ncol(go_down_df)))
+colnames(down_header) <- colnames(go_down_df)
+down_header[1, 1] <- "GO terms for DOWNREGULATED genes"
+
+# combining the tables 
+go_combined <- rbind(
+  up_header,
+  go_up_df,
+  down_header,
+  go_down_df
+)
+```
+
+```{r}
+# Save combined table as a csv
+write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
+```
+
