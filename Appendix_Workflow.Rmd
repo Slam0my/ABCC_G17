@@ -11,8 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This is an appendix containing code and commands used for workflow documentation of reproducing the bioinformatics analysis of the paper.
 
-## Downloading the data 
-
+## [1] Downloading the data 
+Retrieving the sequencing data from NCBI and downloading them onto the HPC. 
 ```{bash, eval=FALSE}
 # Created a project directory 
 mkdir /scratch/grp/msc_appbio/Group17_ABCC
@@ -44,7 +44,7 @@ mv GCF_000146045.2_R64_genomic.fna yeast_reference_genome.fna
 mkdir /scratch/grp/msc_appbio/Group17_ABCC/scripts
 ```
 
-## Converting the raw SRA to fastq format with sra tools
+## [2] Converting the raw SRA to fastq format with sra tools
 Fastq format conversion necessary for downstream analysis.
 Submitted SBATCH sra_to_fastq.sh 
 ```{bash, eval=FALSE}
@@ -70,7 +70,7 @@ fasterq-dump --split-files -O /scratch/grp/msc_appbio/Group17_ABCC/fastq_files *
 echo "End of fastq conversion"
 ```
 
-## QC of the sequences with fastqc
+## [3] QC of the sequences with fastqc
 Performing quality control on these sequences to access the quality and to inform of any needed trimming.
 Submitted SBATCH fastqc_job.sh
 ```{bash, eval=FALSE}
@@ -94,7 +94,7 @@ fastqc -o /scratch/grp/msc_appbio/Group17_ABCC/fastqc_report *.fastq
 echo "End of fastqc"
 ```
 
-## Trimming with cutadapt
+## [4] Trimming with cutadapt
 Fastqc reports identified adapters in the sequences which needed trimming.
 Submitted SBATCH trimming.sh
 ```{bash, eval=FALSE}
@@ -137,7 +137,7 @@ done
 echo "All samples trimmed!"
 ```
 
-## QC on these trimmed reads
+## [5] QC on these trimmed reads
 
 trimmed_fastqc.sh
 ```{bash, eval=FALSE}
@@ -189,8 +189,7 @@ echo "MultiQC completed. Report saved to: $OUT_DIR"
 Locally downloaded N. crassa β-glucosidase gh1-1 CDS in gh1_1.fasta, N. crassa cellodextrin transporter cdt-1 in cdt-1.fasta and eGFP sequence.
 Then SCP to HPC in /scratch/grp/msc_appbio/Group17_ABCC/ref_genome
 
-## Combine cdt1 and egfp together
-
+## [6] Combine cdt1 and egfp together
 Submitted SBATCH cdt1_egfp.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
@@ -220,8 +219,7 @@ cat cdt1.seq egfp.seq >> cdt1_egfp.fasta
 echo "End of cdt1_egfp fusion"
 ```
 
-## Manually combining the reference genome, gh1_1, cdt_1 + egfp into one fasta
-
+## [7] Manually combining the reference genome, gh1_1, cdt_1 + egfp into one fasta
 Submitted SBATCH combined_genome.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
@@ -245,8 +243,7 @@ cat yeast_reference_genome.fna \
 echo "Done combining genome"
 ```
 
-## Checking the manually combined genome size 
-
+## [8] Checking the manually combined genome size 
 Submitted SBATCH genome_size.sh 
 ```{bash, eval=FALSE}
 #!/bin/bash
@@ -272,7 +269,7 @@ echo "Genome size in Mb: $(echo "$bp / 1000000" | bc -l)"
 echo "Done."
 ```
 
-# Manually annotate the genes 
+# [9] Manually annotate the genes 
 Submitted SBATCHgtf_custom_genes.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
@@ -309,7 +306,7 @@ echo "Custom genes successfully added to gtf."
 
 ------
 
-## Indexing with STAR
+## [10] Indexing with STAR
 Indexing the custom_combined_genome.fasta to the custom_combined_annotation.gtf.
 Submitted SBATCH indexing.sh
 ```{bash, eval=FALSE}
@@ -348,7 +345,7 @@ echo "End of star indexing"
 
 ------
 
-## Alignment with STAR
+## [11] Alignment with STAR
 Further cleaning of the trimmed reads were needed then an alignment was performed with the custom indexed genome.
 Submitted SBATCH alignment.sh
 ```{bash, eval=FALSE}
@@ -399,8 +396,7 @@ echo "End of cleaning the trimmed and alignment"
 
 ------
 
-## Generating Count Data with featureCounts
-
+## [12] Generating Count Data with featureCounts
 gene_counts.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
@@ -433,7 +429,7 @@ echo "featureCounts gene counting finished."
 # R
 With the count table, gene_counts.txt was downloaded locally from the HPC to work with in R.
 
-## Differential Expression Analysis with DESeq2
+## [13] Differential Expression Analysis with DESeq2
 
 ```{r, message=FALSE, warning=FALSE}
 # Load libraries
@@ -483,7 +479,7 @@ norm_counts <- counts(data, normalized = TRUE)
 write.csv(norm_counts, file = "normalised_counts.csv", row.names = TRUE)
 ```
 
-## Significant Genes 
+## [14] Significant Genes 
 Calculate the number of differentially expressed genes.
 ```{r,}
 # Saving the results_deseq as a data frame
@@ -525,7 +521,7 @@ num_sig <- nrow(sig_genes)
 
 ------ 
 
-## Volcano Plot
+## [14] Volcano Plot
 Plotting a volcano plot to visualise signifinicantly differential expressed genes.
 ```{r}
 # Create our Y axis with -log10 padj
@@ -568,7 +564,7 @@ print(volcano_plot)
 ggsave("Volcano_Plot.png", plot = volcano_plot, width = 7, height = 7, units = "in")
 ```
 
-# RPKM Calculation
+## [15] RPKM Calculation
 Normalisation to Reads Per Kilobase of transcript per Million mapped reads (RPKM) needed for QC visualisations. 
 ```{r}
 gene_length_bp <- gcdata$Length # obtaining the length values
@@ -591,7 +587,9 @@ log2_rpkm <- log2(rpkm + 1)
 write.csv(log2_rpkm, file="log2_rpkm_normalised.csv", row.names=TRUE)
 ```
 
-# Functional Enrichment GO Analysis
+------
+
+## [16] Functional Enrichment GO Analysis
 ```{r, message=FALSE, warning=FALSE}
 library(clusterProfiler)
 library(org.Sc.sgd.db)
@@ -638,7 +636,7 @@ write.csv(as.data.frame(ego_up),   "GO_BP_Up.csv",    row.names = FALSE)
 write.csv(as.data.frame(ego_down), "GO_BP_Down.csv",  row.names = FALSE)
 ```
 
-# making Function Enrichmend GO analysis table 
+## [17] making Function Enrichmend GO analysis table 
 
 ```{r, message=FALSE, warning=FALSE}
 library(tidyr)
@@ -675,7 +673,7 @@ write.csv(go_up_df, "GO_BP_Up_Table.csv", row.names = FALSE)
 write.csv(go_down_df, "GO_BP_Down_Table.csv", row.names = FALSE)
 ```
 
-# Creating a combined functional Enrichment GO table
+## [18] Creating a combined functional Enrichment GO table
 ```{r}
 # Header for UP genes
 up_header <- as.data.frame(matrix("", nrow = 1, ncol = ncol(go_up_df)))
@@ -698,5 +696,3 @@ go_combined <- rbind(
 # Save combined table as a csv
 write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
 ```
-
-
