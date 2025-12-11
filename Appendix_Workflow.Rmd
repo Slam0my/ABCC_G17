@@ -19,34 +19,34 @@ mkdir /scratch/grp/msc_appbio/Group17_ABCC
 
 # Create a directory for our raw sequencing data 
 mkdir /scratch/grp/msc_appbio/Group17_ABCC/SRA_raw_data
-
 cd /scratch/grp/msc_appbio/Group17_ABCC/SRA_raw_data
 
 # Obtained the sequencing files from NCBI 
 # SRA toolkit for prefetch 
 module load sra-tools/3.0.3-gcc-13.2.0
 
+# prefetch command for our sequencing data
 prefetch SRR1166442 SRR1166443 SRR1166444 SRR1166445 SRR1166446 SRR1166447
-
 
 # Create a directory for our reference genome
 mkdir /scratch/grp/msc_appbio/Group17_ABCC/ref_genome
 cd /scratch/grp/msc_appbio/Group17_ABCC/ref_genome
+
 # Obtained the yeast reference genome from 
 wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/146/045/GCF_000146045.2_ R64/GCF_000146045.2_R64_genomic.fna.gz 
-# Unzip 
+
+# Unzipping the file 
 gunzip GCF_000146045.2_R64_genomic.fna.gz
-# Rename
+# Renaming the reference genome
 mv GCF_000146045.2_R64_genomic.fna yeast_reference_genome.fna
 
-# Created a directory to store our scripts
+# Created a directory to store our future scripts 
 mkdir /scratch/grp/msc_appbio/Group17_ABCC/scripts
-
 ```
 
-## Converting raw SRA to fastq format
-
-sra_to_fastq.sh
+## Converting the raw SRA to fastq format with sra tools
+Fastq format conversion necessary for downstream analysis.
+Submitted SBATCH sra_to_fastq.sh 
 ```{bash, eval=FALSE}
 #!/bin/bash
 
@@ -70,9 +70,9 @@ fasterq-dump --split-files -O /scratch/grp/msc_appbio/Group17_ABCC/fastq_files *
 echo "End of fastq conversion"
 ```
 
-## QC of the sequences
-
-fastqc_job.sh
+## QC of the sequences with fastqc
+Performing quality control on these sequences to access the quality and to inform of any needed trimming.
+Submitted SBATCH fastqc_job.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
 
@@ -82,7 +82,6 @@ fastqc_job.sh
 #SBATCH --ntasks=1
 #SBATCH --time=01:00:00
 #SBATCH --partition=msc_appbio
-
 
 module load fastqc/0.11.9-gcc-13.2.0
 
@@ -95,9 +94,9 @@ fastqc -o /scratch/grp/msc_appbio/Group17_ABCC/fastqc_report *.fastq
 echo "End of fastqc"
 ```
 
-## Trimming 
-
-trimming.sh
+## Trimming with cutadapt
+Fastqc reports identified adapters in the sequences which needed trimming.
+Submitted SBATCH trimming.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
 
@@ -159,7 +158,8 @@ fastqc *_trimmed.fastq
 echo "end of fastqc"
 ```
 
-trimmed_multiqc.sh
+Performing a multiqc report.
+Submitted SBATCH trimmed_multiqc.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
 #SBATCH --output=/scratch/grp/msc_appbio/group17_ABCC/trimmed_multiqc_%j.out
@@ -189,10 +189,9 @@ echo "MultiQC completed. Report saved to: $OUT_DIR"
 Locally downloaded N. crassa β-glucosidase gh1-1 CDS in gh1_1.fasta, N. crassa cellodextrin transporter cdt-1 in cdt-1.fasta and eGFP sequence.
 Then SCP to HPC in /scratch/grp/msc_appbio/Group17_ABCC/ref_genome
 
-
 ## Combine cdt1 and egfp together
 
-cdt1_egfp.sh
+Submitted SBATCH cdt1_egfp.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
 
@@ -221,9 +220,9 @@ cat cdt1.seq egfp.seq >> cdt1_egfp.fasta
 echo "End of cdt1_egfp fusion"
 ```
 
-## Manually combining the reference genome, gh1_1, cdt_1 egfp into one fasta
+## Manually combining the reference genome, gh1_1, cdt_1 + egfp into one fasta
 
-combined_genome.sh
+Submitted SBATCH combined_genome.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
 
@@ -248,7 +247,7 @@ echo "Done combining genome"
 
 ## Checking the manually combined genome size 
 
-genome_size.sh 
+Submitted SBATCH genome_size.sh 
 ```{bash, eval=FALSE}
 #!/bin/bash
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/ref_genome/genome_size_job%j.out
@@ -274,7 +273,7 @@ echo "Done."
 ```
 
 # Manually annotate the genes 
-gtf_custom_genes.sh
+Submitted SBATCHgtf_custom_genes.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/ref_genome/gtf_custom_genes_job%j.out
@@ -311,10 +310,11 @@ echo "Custom genes successfully added to gtf."
 ------
 
 ## Indexing with STAR
-
-indexing.sh
+Indexing the custom_combined_genome.fasta to the custom_combined_annotation.gtf.
+Submitted SBATCH indexing.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
+
 #SBATCH --job-name=star_index_custom
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/scripts/index_custom_%j.out
 #SBATCH --time=03:00:00
@@ -324,10 +324,12 @@ indexing.sh
 
 module load star/2.7.10b-gcc-13.2.0
 
+#Define our directories
 indexdir=/scratch/grp/msc_appbio/Group17_ABCC/star_index
 FASTA=/scratch/grp/msc_appbio/Group17_ABCC/ref_genome/custom_combined_genome.fasta
 GTF=/scratch/grp/msc_appbio/Group17_ABCC/ref_genome/custom_combined_annotation.gtf
 
+# Create a new directory for the output
 mkdir -p $indexdir
 
 echo "Start of star indexing"
@@ -338,17 +340,20 @@ STAR \
     --genomeDir $indexdir \
     --genomeFastaFiles $FASTA \
     --sjdbGTFfile $GTF \
-    --sjdbOverhang 49   
-    
+    --sjdbOverhang 49
+# Overhang of 49bp
+
 echo "End of star indexing"
 ```
 
 ------
 
 ## Alignment with STAR
-
-alignment.sh
+Further cleaning of the trimmed reads were needed then an alignment was performed with the custom indexed genome.
+Submitted SBATCH alignment.sh
 ```{bash, eval=FALSE}
+#!/bin/bash
+
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/scripts/star_clean_align_%j.out
 #SBATCH --time=08:00:00
 #SBATCH --nodes=1
@@ -390,7 +395,6 @@ for f in $trim_dir/*_trimmed.fastq; do
 done
 
 echo "End of cleaning the trimmed and alignment"
-
 ```
 
 ------
@@ -432,32 +436,41 @@ With the count table, gene_counts.txt was downloaded locally from the HPC to wor
 ## Differential Expression Analysis with DESeq2
 
 ```{r, message=FALSE, warning=FALSE}
-
+# Load libraries
 library(data.table)
 library(DESeq2)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+```
 
+```{r}
 # Set base directory 
 setwd("C:/Users/sarah/OneDrive/Desktop/KCL/APCC/Group") 
 
 # Import the data from local
 gcdata <- fread("C:/Users/sarah/Downloads/gene_counts.txt", header = TRUE)
 
-# Create a numeric matrix with the load counts
+# Create a numeric matrix with the load counts in columns 7 to 12
 counts <- as.matrix(gcdata[, 7:12, with=FALSE])
 rownames(counts) <- gcdata$Geneid
 
+# Define sample conditions
 grown_condition <- factor(c("glucose", "glucose","glucose", "cellobiose", "cellobiose", "cellobiose"))
 col_data<- data.frame(row.names = colnames(counts), grown_condition)
 
-#Create the DESeqDataSet object
+#Create the DESeq2 dataset 
 data <- DESeqDataSetFromMatrix(
     countData = counts, 
     colData = col_data,
     design = ~ grown_condition 
 )
 
-# DESeq 
+# Run DESeq 
 data <- DESeq(data)
+
+# Contrast cellobiose vs glucose
 results_deseq <- results(data, contrast = c("grown_condition", "cellobiose", "glucose"))
 
 # Save as a csv
@@ -468,55 +481,68 @@ norm_counts <- counts(data, normalized = TRUE)
 
 # Save as a csv 
 write.csv(norm_counts, file = "normalised_counts.csv", row.names = TRUE)
-
 ```
 
 ## Significant Genes 
-Calculate the number of differentially expressed genes
-```{r, message=FALSE, warning=FALSE}
-library(dplyr)
-
+Calculate the number of differentially expressed genes.
+```{r,}
+# Saving the results_deseq as a data frame
 results_df <- as.data.frame(results_deseq)
 results_df <- na.omit(results_df) # remove NAs if there are
 
+# Define thresholds
 FDR_CUTOFF <- 0.001 # Define our cutoff for FDR
 LOG2FC_CUTOFF <- 1.0 # Define our log2 2-fold change cutoff
 
-#Significant genes
-sig_genes <- results_df[which(results_df$padj < FDR_CUTOFF & abs(results_df$log2FoldChange) >= LOG2FC_CUTOFF), ]
+# Add regulation label
+results_df$regulation <- ifelse(
+  results_df$padj < FDR_CUTOFF & results_df$log2FoldChange >= LOG2FC_CUTOFF, "Up",
+  ifelse(results_df$padj < FDR_CUTOFF & results_df$log2FoldChange <= -LOG2FC_CUTOFF, "Down",
+         "Not Significant")
+)
+
+# Significant genes (Up and Down combined)
+sig_genes <- results_df[results_df$regulation != "Not Significant", ]
+# Save as csv
+write.csv(sig_genes, "Significant_Genes.csv", row.names = TRUE)
+
+# Save Upregulated genes only as csv
+up_genes <- results_df[results_df$regulation == "Up", ]
+# Save as csv
+write.csv(up_genes, "Upregulated_Genes.csv", row.names = TRUE)
+
+# Save Downregulated genes only as csv
+down_genes <- results_df[results_df$regulation == "Down", ]
+# Save as csv
+write.csv(down_genes, "Downregulated_Genes.csv", row.names = TRUE)
+
+# Save complete annotated results table as csv
+write.csv(results_df, "Full_DESeq2_Results_Annotated.csv", row.names = TRUE)
 
 # Number of differentially expressed genes
 num_sig <- nrow(sig_genes)
-
-# Sae as a csv
-write.csv(sig_genes, file="Significant_Genes.csv", row.names = TRUE)
 ```
 
+------ 
+
 ## Volcano Plot
-```{r, message=FALSE, warning=FALSE}
-library(ggplot2)
-
+Plotting a volcano plot to visualise signifinicantly differential expressed genes.
+```{r}
 # Create our Y axis with -log10 padj
-results_df$log10Padj <- -log10(results_df$padj)
-
-# Using the cutoffs for colouring on graph
-results_df <- results_df %>%
-  mutate(DiffExpression = case_when(
-    log2FoldChange >= LOG2FC_CUTOFF & padj <= FDR_CUTOFF ~ "Upregulated",
-    log2FoldChange <= -LOG2FC_CUTOFF & padj <= FDR_CUTOFF ~ "Downregulated",
-    TRUE ~ "Not Significant"
-  ))
+results_df$neglog10Padj <- -log10(results_df$padj)
 
 # Creating our volcano plot
 volcano_plot <- ggplot(results_df, 
                        aes(x = log2FoldChange, 
-                           y = log10Padj, 
-                           color = DiffExpression)) +
+                           y = neglog10Padj, 
+                           color = regulation)) +
+  # Defining the points 
   geom_point(size = 1, alpha = 0.7) +
-  scale_color_manual(values = c("Upregulated" = "red", #significant 
-                                "Downregulated" = "red", 
+  scale_color_manual(values = c("Up" = "red", #significant 
+                                "Down" = "red", 
                                 "Not Significant" = "black")) +
 
+  # Cut off lines
   geom_hline(yintercept = -log10(FDR_CUTOFF), # line for FDR cutoff
              linetype = "dashed", 
              color = "grey") +
@@ -524,13 +550,15 @@ volcano_plot <- ggplot(results_df,
              linetype = "dashed", # line for log2 cutoff
              color = "grey") +
   
+  # Defining labels
   labs(
     title = "Volcano Plot",
     subtitle = paste(num_sig, "Differentially Expressed Genes"),
     x = expression("log2 Fold Change (Cellobiose/Glucose) with DESeq"),
     y = expression("-log10 Adjusted P-value")
   ) +
-  
+
+  # Aesthetics
   theme_minimal() +
   theme(legend.title = element_blank())
 
@@ -540,12 +568,13 @@ print(volcano_plot)
 ggsave("Volcano_Plot.png", plot = volcano_plot, width = 7, height = 7, units = "in")
 ```
 
-
 # RPKM Calculation
+Normalisation to Reads Per Kilobase of transcript per Million mapped reads (RPKM) needed for QC visualisations. 
 ```{r}
-gene_length_bp <- gcdata$Length
-gene_length_kb <- gene_length_bp / 1000
+gene_length_bp <- gcdata$Length # obtaining the length values
+gene_length_kb <- gene_length_bp / 1000 # converting to kb 
 
+# Normalising the length
 raw_counts<- counts(data, normalized=FALSE)
 # Total reads per library
 total_counts <- colSums(raw_counts)
@@ -555,8 +584,122 @@ rpkm <- sweep(counts, 1, gene_length_kb, FUN="/")
 # Divide by library totals (per million)
 rpkm <- sweep(rpkm, 2, total_counts/1e6, FUN="/")
 
-# log2 for visualization
+# log2 for visualization which address the "By Totals" normalisation method used in the original paper.
 log2_rpkm <- log2(rpkm + 1)
-write.csv(log2_rpkm, file="log2_rpkm_normalised.csv", row.names=TRUE)
 
+# Create a csv
+write.csv(log2_rpkm, file="log2_rpkm_normalised.csv", row.names=TRUE)
 ```
+
+# Functional Enrichment GO Analysis
+```{r, message=FALSE, warning=FALSE}
+library(clusterProfiler)
+library(org.Sc.sgd.db)
+library(enrichplot)
+```
+
+```{r}
+# Create gene lists 
+genes_all  <- rownames(sig_genes)
+genes_up   <- rownames(up_genes)
+genes_down <- rownames(down_genes)
+
+# Enrich GO Biological Process
+ego_all <- enrichGO(
+  gene          = genes_all,
+  OrgDb         = org.Sc.sgd.db,
+  keyType       = "ORF",
+  ont           = "BP",
+  pAdjustMethod = "BH",
+  qvalueCutoff  = 0.05
+)
+
+ego_up <- enrichGO(
+  gene          = genes_up,
+  OrgDb         = org.Sc.sgd.db,
+  keyType       = "ORF",
+  ont           = "BP",
+  pAdjustMethod = "BH",
+  qvalueCutoff  = 0.05
+)
+
+ego_down <- enrichGO(
+  gene          = genes_down,
+  OrgDb         = org.Sc.sgd.db,
+  keyType       = "ORF",
+  ont           = "BP",
+  pAdjustMethod = "BH",
+  qvalueCutoff  = 0.05
+)
+
+# Save results as csv 
+write.csv(as.data.frame(ego_all),  "GO_BP_All.csv",   row.names = FALSE)
+write.csv(as.data.frame(ego_up),   "GO_BP_Up.csv",    row.names = FALSE)
+write.csv(as.data.frame(ego_down), "GO_BP_Down.csv",  row.names = FALSE)
+
+# view dotplots for GO 
+dotplot(ego_up, showCategory = 15) + ggtitle("GO BP: Upregulated Genes")
+dotplot(ego_down, showCategory = 15) + ggtitle("GO BP: Downregulated Genes")
+```
+
+# making Function Enrichmend GO analysis table 
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyr)
+library(dplyr)
+
+# UPREGULATED GO RESULTS ----
+go_up_df <- as.data.frame(ego_up) %>%
+  tidyr::separate(GeneRatio, into = c("k", "k_total"), sep = "/", convert = TRUE) %>%
+  tidyr::separate(BgRatio,  into = c("f", "f_total"), sep = "/", convert = TRUE) %>%
+  dplyr::select(Description, p.adjust, k, f, geneID) %>%
+  dplyr::rename(
+    `GO Term` = Description,
+    `p-value (adjusted)` = p.adjust,
+    `k (genes in cluster)` = k,
+    `f (genes in category)` = f,
+    `Genes in category from cluster` = geneID
+  )
+
+# DOWNREGULATED GO RESULTS ----
+go_down_df <- as.data.frame(ego_down) %>%
+  tidyr::separate(GeneRatio, into = c("k", "k_total"), sep = "/", convert = TRUE) %>%
+  tidyr::separate(BgRatio, into = c("f", "f_total"), sep = "/", convert = TRUE) %>%
+  dplyr::select(Description, p.adjust, k, f, geneID) %>%
+  dplyr::rename(
+    `GO Term` = Description,
+    `p-value (adjusted)` = p.adjust,
+    `k (genes in cluster)` = k,
+    `f (genes in category)` = f,
+    `Genes in category from cluster` = geneID
+  )
+
+# Save tables as csv
+write.csv(go_up_df, "GO_BP_Up_Table.csv", row.names = FALSE)
+write.csv(go_down_df, "GO_BP_Down_Table.csv", row.names = FALSE)
+```
+
+# Creating a combined functional Enrichment GO table
+```{r}
+# Header for UP genes
+up_header <- as.data.frame(matrix("", nrow = 1, ncol = ncol(go_up_df)))
+colnames(up_header) <- colnames(go_up_df)
+up_header[1, 1] <- "GO terms for UPREGULATED genes"
+
+# Header for DOWN genes
+down_header <- as.data.frame(matrix("", nrow = 1, ncol = ncol(go_down_df)))
+colnames(down_header) <- colnames(go_down_df)
+down_header[1, 1] <- "GO terms for DOWNREGULATED genes"
+
+# combining the tables 
+go_combined <- rbind(
+  up_header,
+  go_up_df,
+  down_header,
+  go_down_df
+)
+
+# Save combined table as a csv
+write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
+```
+
