@@ -636,10 +636,6 @@ ego_down <- enrichGO(
 write.csv(as.data.frame(ego_all),  "GO_BP_All.csv",   row.names = FALSE)
 write.csv(as.data.frame(ego_up),   "GO_BP_Up.csv",    row.names = FALSE)
 write.csv(as.data.frame(ego_down), "GO_BP_Down.csv",  row.names = FALSE)
-
-# view dotplots for GO 
-dotplot(ego_up, showCategory = 15) + ggtitle("GO BP: Upregulated Genes")
-dotplot(ego_down, showCategory = 15) + ggtitle("GO BP: Downregulated Genes")
 ```
 
 # making Function Enrichmend GO analysis table 
@@ -702,4 +698,5 @@ go_combined <- rbind(
 # Save combined table as a csv
 write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
 ```
+
 
