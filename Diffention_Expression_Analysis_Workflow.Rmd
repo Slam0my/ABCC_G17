@@ -1,0 +1,162 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Differential Expression Analysis 
+
+```{r}
+library(data.table)
+library(DESeq2)
+library(tidyverse)
+library(ggrepel)
+```
+
+#Set base directory
+```{r}
+setwd("/Users/ayanabdillahi/Desktop/Group17_ABCC")
+```
+#Import data from the local 
+```{r}
+data <- fread("gene_counts.txt", header = TRUE)
+```
+```{r}
+#Count columns = columns 7 to 12 in your file
+counts <- as.matrix(data[, 7:12, with = FALSE])
+rownames(counts) <- data$Geneid
+```
+
+```{r}
+#Define sample conditions (3 glucose, 3 cellobiose)
+grown_condition <- factor(c("glucose", "glucose", "glucose",
+                            "cellobiose", "cellobiose", "cellobiose"))
+
+col_data <- data.frame(row.names = colnames(counts),
+                       grown_condition = grown_condition)
+```
+
+
+```{r}
+#Create DESeq2 dataset
+
+data <- DESeqDataSetFromMatrix(countData = counts,
+                               colData = col_data,
+                               design = ~ grown_condition)
+```
+
+```{r}
+#Run DESeq2
+
+data <- DESeq(data)
+```
+
+```{r}
+# Contrast: cellobiose vs glucose
+results_deseq <- results(data, contrast = c("grown_condition",
+                                            "cellobiose", "glucose"))
+```
+
+```{r}
+# Save as a csv 
+write.csv(as.data.frame(results_deseq),
+          file = "DESEQ_results.csv", row.names = TRUE)
+```
+```{r}
+# Normalised counts
+norm_counts <- counts(data, normalized = TRUE)
+```
+
+```{r}
+# Save as a csv
+write.csv(norm_counts, file = "normalised_counts.csv", row.names = TRUE)
+```
+
+
+
+```{r}
+# Significant Genes
+results_df <- as.data.frame(results_deseq)
+results_df <- na.omit(results_df) # remove NAs if there are 
+
+```
+
+```{r}
+# Define thresholds 
+FDR_CUTOFF <- 0.001        # Define our cutoff for FDR
+LOG2FC_CUTOFF <- 1         # Define our log2 2-fold change cutoff
+```
+```{r}
+# Add regulation label
+results_df$regulation <- ifelse(
+  results_df$padj < FDR_CUTOFF & results_df$log2FoldChange >= LOG2FC_CUTOFF, "Up",
+  ifelse(results_df$padj < FDR_CUTOFF & results_df$log2FoldChange <= -LOG2FC_CUTOFF, "Down",
+         "Not Significant")
+)
+
+```
+```{r}
+# Save all significant genes (up + down combined) as csv
+sig_genes <- results_df[results_df$regulation != "Not Significant", ]
+write.csv(sig_genes, "Significant_Genes.csv", row.names = TRUE)
+
+# Save Upregulated genes only as csv
+up_genes <- results_df[results_df$regulation == "Up", ]
+write.csv(up_genes, "Upregulated_Genes.csv", row.names = TRUE)
+
+# Save Downregulated genes only as csv
+down_genes <- results_df[results_df$regulation == "Down", ]
+write.csv(down_genes, "Downregulated_Genes.csv", row.names = TRUE)
+
+# Save complete annotated results table as csv
+write.csv(results_df, "Full_DESeq2_Results_Annotated.csv", row.names = TRUE)
+
+```
+
+```{r}
+# Number of differentially expressed genes
+num_sig <- nrow(sig_genes)
+```
+
+
+# Volcano Plot
+```{r}
+library(ggplot2)
+```
+
+```{r}
+# Create our Y axis with -log10 padj
+results_df$neglog10padj <- -log10(results_df$padj)
+
+volcano_plot <- ggplot(results_df,
+                       aes(x = log2FoldChange,
+                           y = neglog10padj,
+                           color = regulation)) +
+  geom_point(alpha = 0.7, size = 1.5) +
+  scale_color_manual(values = c(
+    "Up" = "red",
+    "Down" = "red",
+    "Not Significant" = "black"
+  )) +
+  
+  # CUT-OFF LINES 
+  geom_hline(yintercept = -log10(FDR_CUTOFF),
+             linetype = "dashed", color = "black") +
+  geom_vline(xintercept = c(-LOG2FC_CUTOFF, LOG2FC_CUTOFF),
+             linetype = "dashed", color = "black") +
+  
+  labs(
+    title = "Volcano Plot: Cellobiose vs Glucose",
+    subtitle = paste(num_sig, "Differentially Expressed Genes"),
+    x = expression(log[2]~"Fold Change (Cellobiose/Glucose) with DESeq"),
+    y = expression(-log[10]("adjusted p-value"))
+  ) +
+  
+  theme_minimal() + 
+  theme(legend.title = element_blank())
+
+
+print(volcano_plot)
+
+# Save the plot 
+ggsave("Volcano_Plot.png",
+       plot = volcano_plot, width = 7, height = 7, units = "in")
+
+```
