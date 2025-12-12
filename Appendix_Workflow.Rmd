@@ -258,7 +258,7 @@ echo "Checking genome size..."
 cd /scratch/grp/msc_appbio/Group17_ABCC/ref_genome/
 
 # Count total base pairs (no headers)
-bp=$(grep -v "^>" combined_yeast_ref_genome.fasta | tr -d '\n' | wc -c)
+bp=$(grep -v "^>" custom_combined_genome.fasta | tr -d '\n' | wc -c)
 
 echo "Total base pairs (bp): $bp"
 
@@ -575,7 +575,7 @@ raw_counts<- counts(data, normalized=FALSE)
 total_counts <- colSums(raw_counts)
 
 # Divide counts by gene length (kb)
-rpkm <- sweep(counts, 1, gene_length_kb, FUN="/")
+rpkm <- sweep(raw_counts, 1, gene_length_kb, FUN="/")
 # Divide by library totals (per million)
 rpkm <- sweep(rpkm, 2, total_counts/1e6, FUN="/")
 
@@ -695,4 +695,3 @@ go_combined <- rbind(
 # Save combined table as a csv
 write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
 ```
-
