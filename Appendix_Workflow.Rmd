@@ -476,7 +476,7 @@ library(ggplot2)
 library(ggrepel)
 ```
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 # Set base directory 
 setwd("C:/Users/sarah/OneDrive/Desktop/KCL/APCC/Group") 
 
@@ -516,7 +516,7 @@ write.csv(norm_counts, file = "normalised_counts.csv", row.names = TRUE)
 
 ## [11] Significant Genes 
 Calculate the number of differentially expressed genes.
-```{r,}
+```{r, message=FALSE, warning=FALSE}
 # Saving the results_deseq as a data frame
 results_df <- as.data.frame(results_deseq)
 results_df <- na.omit(results_df) # remove NAs if there are
@@ -558,7 +558,7 @@ num_sig <- nrow(sig_genes)
 
 ## [12] Volcano Plot
 Plotting a volcano plot to visualise signifinicantly differentially expressed genes.
-```{r}
+```{r, message=FALSE, warning=FALSE}
 # Create our Y axis with -log10 padj
 results_df$neglog10Padj <- -log10(results_df$padj)
 
@@ -601,7 +601,7 @@ ggsave("Volcano_Plot.png", plot = volcano_plot, width = 7, height = 7, units = "
 
 ## [13] RPKM Calculation
 Normalisation to Reads Per Kilobase of transcript per Million mapped reads (RPKM) needed for QC visualisations. 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 gene_length_bp <- gcdata$Length # obtaining the length values
 gene_length_kb <- gene_length_bp / 1000 # converting to kb 
 
@@ -631,7 +631,7 @@ library(org.Sc.sgd.db)
 library(enrichplot)
 ```
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 # Create gene lists 
 genes_all  <- rownames(sig_genes)
 genes_up   <- rownames(up_genes)
@@ -710,7 +710,7 @@ write.csv(go_down_df, "GO_BP_Down_Table.csv", row.names = FALSE)
 
 ## [16] Creating a combined functional Enrichment GO table
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 # Header for UP genes
 up_header <- as.data.frame(matrix("", nrow = 1, ncol = ncol(go_up_df)))
 colnames(up_header) <- colnames(go_up_df)
@@ -732,3 +732,8 @@ go_combined <- rbind(
 # Save combined table as a csv
 write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
 ```
+
+# Save combined table as a csv
+write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
+```
+
