@@ -138,6 +138,7 @@ echo "All samples trimmed!"
 ```
 
 ## [5] QC on these trimmed reads
+To access whether the adapters were successfully removed.
 Submitted SBATCH trimmed_fastqc.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
@@ -187,6 +188,7 @@ echo "MultiQC completed. Report saved to: $OUT_DIR"
 
 Locally downloaded N. crassa β-glucosidase gh1-1 CDS in gh1_1.fasta, N. crassa cellodextrin transporter cdt-1 in cdt-1.fasta and eGFP sequence.
 Then SCP to HPC in /scratch/grp/msc_appbio/Group17_ABCC/ref_genome
+The plasmid sequence pRS426-BT was not available online. 
 
 ### [6.1] Combine cdt1 and egfp together
 Submitted SBATCH cdt1_egfp.sh
@@ -267,6 +269,11 @@ echo "Genome size in Mb: $(echo "$bp / 1000000" | bc -l)"
 
 echo "Done."
 ```
+
+
+Total Genome size in Mb: 12160993
+
+In the paper the total size of the custom reference genome was 12.17 Mb. This difference can be explained through the absence of the plasmid pRS426-BT.
 
 ### [6.4]  Manually annotate the genes 
 Submitted SBATCHgtf_custom_genes.sh
@@ -376,11 +383,14 @@ for f in $trim_dir/*_trimmed.fastq; do
     sample=$(basename $f _trimmed.fastq)
 
     # 1. Clean the trimmed reads
+    # Removes empty spacing - reads shorter than 1bp
+    # Necessary for error prevention for alignment
     clean_FASTQ=$clean_trim_dir/${sample}_trimmed_clean.fastq
     echo "Cleaning $f "
     seqtk seq -L 1 $f > $clean_FASTQ
 
     # 2. Alignment on the cleaned trimmed reads
+    # Output BAM files, necessary for featureCounts
     echo "Aligning $clean_FASTQ "
     STAR \
         --runThreadN 4 \
@@ -393,10 +403,36 @@ done
 echo "End of cleaning the trimmed and alignment"
 ```
 
+Mapping results were accessed with the average uniquely mapped reads accounting to 87.93%.
+
+SRR1166442
+Number of input reads   | 40584434
+Uniquely mapped reads % | 88.66%
+
+SRR1166443
+Number of input reads   | 44936907
+Uniquely mapped reads % | 88.68%
+
+SRR1166444
+Number of input reads   | 34777833
+Uniquely mapped reads % | 89.04%
+
+SRR1166445
+Number of input reads   | 45542623
+Uniquely mapped reads % | 86.76%
+
+SRR1166446
+Number of input reads   | 38222169
+Uniquely mapped reads % | 86.94%
+
+SRR1166447
+Number of input reads   | 34541421
+Uniquely mapped reads % | 87.49%
+
 ------
 
 ## [9] Generating Count Data with featureCounts
-gene_counts.sh
+Submitted SBATCH gene_counts.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
 #SBATCH --output=/scratch/grp/msc_appbio/Group17_ABCC/alignment_star/featureCounts_job%j.out
@@ -425,11 +461,11 @@ echo "featureCounts gene counting finished."
 ```
 
 ------
+
 ## R
 With the count table, gene_counts.txt was downloaded locally from the HPC to work with in R.
 
 ## [10] Differential Expression Analysis with DESeq2
-
 ```{r, message=FALSE, warning=FALSE}
 # Load libraries
 library(data.table)
@@ -521,7 +557,7 @@ num_sig <- nrow(sig_genes)
 ------ 
 
 ## [12] Volcano Plot
-Plotting a volcano plot to visualise signifinicantly differential expressed genes.
+Plotting a volcano plot to visualise signifinicantly differentially expressed genes.
 ```{r}
 # Create our Y axis with -log10 padj
 results_df$neglog10Padj <- -log10(results_df$padj)
@@ -673,6 +709,7 @@ write.csv(go_down_df, "GO_BP_Down_Table.csv", row.names = FALSE)
 ```
 
 ## [16] Creating a combined functional Enrichment GO table
+
 ```{r}
 # Header for UP genes
 up_header <- as.data.frame(matrix("", nrow = 1, ncol = ncol(go_up_df)))
