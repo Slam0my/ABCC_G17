@@ -57,14 +57,18 @@ Submitted SBATCH sra_to_fastq.sh
 #SBATCH --time=01:00:00
 #SBATCH --partition=msc_appbio
 
+#Loading sra tools for conversion 
 module load sra-tools/3.0.3-gcc-13.2.0
 
 echo "Start of SRA conversion to fastq"
 
+#Make a new directory for our output fastq
 mkdir -p /scratch/grp/msc_appbio/Group17_ABCC/fastq_files 
 
+#Set directory of where our raw sequences are
 cd /scratch/grp/msc_appbio/Group17_ABCC/SRA_raw_data
 
+#Command to convert 
 fasterq-dump --split-files -O /scratch/grp/msc_appbio/Group17_ABCC/fastq_files *.sra
 
 echo "End of fastq conversion"
@@ -83,12 +87,15 @@ Submitted SBATCH fastqc_job.sh
 #SBATCH --time=01:00:00
 #SBATCH --partition=msc_appbio
 
+#Loading fastqc module
 module load fastqc/0.11.9-gcc-13.2.0
 
 echo "Start of fastqc"
 
+#Set directory
 cd /scratch/grp/msc_appbio/Group17_ABCC/fastq_files/
 
+#Command to generate fastqc reports of all our fastq files
 fastqc -o /scratch/grp/msc_appbio/Group17_ABCC/fastqc_report *.fastq
 
 echo "End of fastqc"
@@ -363,9 +370,10 @@ Submitted SBATCH alignment.sh
 #SBATCH --ntasks=4
 #SBATCH --partition=msc_appbio
 
-module load seqtk/1.4-gcc-13.2.0
-module load star/2.7.10b-gcc-13.2.0
-module load samtools/1.17-gcc-13.2.0-python-3.11.6
+#Loading modules 
+module load seqtk/1.4-gcc-13.2.0 #For cleaning the trimmed files
+module load star/2.7.10b-gcc-13.2.0 #For our alignment
+module load samtools/1.17-gcc-13.2.0-python-3.11.6 #For generating the BAM files
 
 # Directories
 trim_dir=/scratch/grp/msc_appbio/Group17_ABCC/trimmed
@@ -373,6 +381,7 @@ clean_trim_dir=/scratch/grp/msc_appbio/Group17_ABCC/trimmed_cleaned
 alignment_dir=/scratch/grp/msc_appbio/Group17_ABCC/alignment_star
 index_dir=/scratch/grp/msc_appbio/Group17_ABCC/star_index
 
+#Making new directories
 mkdir -p $clean_trim_dir
 mkdir -p $alignment_dir
 
@@ -389,7 +398,7 @@ for f in $trim_dir/*_trimmed.fastq; do
     echo "Cleaning $f "
     seqtk seq -L 1 $f > $clean_FASTQ
 
-    # 2. Alignment on the cleaned trimmed reads
+    # 2. Alignment of the cleaned trimmed reads
     # Output BAM files, necessary for featureCounts
     echo "Aligning $clean_FASTQ "
     STAR \
@@ -403,7 +412,7 @@ done
 echo "End of cleaning the trimmed and alignment"
 ```
 
-Mapping results were accessed with the average uniquely mapped reads accounting to 87.93%.
+Mapping results were assessed with the average uniquely mapped reads accounting to 87.93%, which is slightly higher to the reported 83.4% mapped of the paper.
 
 SRR1166442
 Number of input reads   | 40584434
@@ -733,7 +742,5 @@ go_combined <- rbind(
 write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
 ```
 
-# Save combined table as a csv
-write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
-```
+
 
