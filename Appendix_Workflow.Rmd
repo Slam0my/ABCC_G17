@@ -814,7 +814,7 @@ write.csv(as.data.frame(ego_up),   "GO_BP_Up.csv",    row.names = FALSE)
 write.csv(as.data.frame(ego_down), "GO_BP_Down.csv",  row.names = FALSE)
 ```
 
-## [17] making Function Enrichmend GO analysis table 
+## [17] making Function Enrichmend GO analysis tables 
 
 ```{r, message=FALSE, warning=FALSE}
 library(tidyr)
@@ -875,4 +875,40 @@ go_combined <- rbind(
 # Save combined table as a csv
 write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
 ```
+
+## [19] Creating GO_Biolocical_Processes_Analysis_SummaryTable 
+
+```{r}
+# load the libraries 
+library(readr)
+library(dplyr)
+library(tidyr)
+```
+
+```{r}
+# Creating the summary table 
+GO_BP_Summary <- df %>%
+  group_by(regulation) %>%          # splits the data into upregulated & downregulated
+  arrange(`p-value (adjusted)`) %>%  # sorts the groups from most significant to least significant 
+  slice_head(n = 10) %>%            # takes the first 10 rows from each group 
+  select(                     
+    regulation,
+    `GO Term`,
+    `p-value (adjusted)`,
+    `k (genes in cluster)`,
+    `f (genes in category)`,
+    `Genes in category from cluster`
+  )
+```
+
+```{r}
+View(GO_BP_Summary)
+```
+
+```{r}
+# Save as csv
+write.csv(GO_BP_Summary,"GO_BP_Summary.csv", row.names = FALSE)
+```
+
+
 
