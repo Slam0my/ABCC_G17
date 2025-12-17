@@ -637,7 +637,6 @@ write.csv(log2_rpkm, file="log2_rpkm_normalised.csv", row.names=TRUE)
 ```{r, message=FALSE, warning=FALSE}
 library(clusterProfiler)
 library(org.Sc.sgd.db)
-library(enrichplot)
 ```
 
 ```{r, message=FALSE, warning=FALSE}
@@ -741,6 +740,7 @@ go_combined <- rbind(
 # Save combined table as a csv
 write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
 ```
+
 
 
 
