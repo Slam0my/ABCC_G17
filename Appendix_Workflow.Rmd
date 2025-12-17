@@ -698,6 +698,20 @@ install.packages("pheatmap")
 library(pheatmap)
 
 #hierarchical clustering
+#extract sample columns
+expr_matrix <- RPKM[, sample_cols] 
+
+#convert to matrix
+expr_matrix <- as.matrix(expr_matrix)      
+
+#ensure numeric
+mode(expr_matrix) <- "numeric"           
+
+#Remove zero-variance genes (rows)
+expr_matrix <- expr_matrix[apply(expr_matrix, 1, sd) != 0, ]
+
+#Scale each gene (row)
+expr_scaled <- t(scale(t(expr_matrix)))
 
 #calculate the distance matrix for clustering, describing the differences between samples
 d <- dist(expr_t)
@@ -915,6 +929,7 @@ go_combined <- rbind(
 # Save combined table as a csv
 write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
 ```
+
 
 
 
