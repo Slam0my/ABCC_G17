@@ -884,6 +884,25 @@ library(readr)
 library(dplyr)
 library(tidyr)
 ```
+```{r}
+df <- read_csv("GO_BP_Combined.csv")
+```
+```{r}
+# Creating the regulation column
+df <- df %>%
+  mutate(
+    regulation = case_when(
+      grepl("UPREGULATED", `GO Term`, ignore.case = TRUE) ~ "Upregulated",
+      grepl("DOWNREGULATED", `GO Term`, ignore.case = TRUE) ~ "Downregulated",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  fill(regulation, .direction = "down") %>%
+  filter(
+    !grepl("^GO terms for", `GO Term`, ignore.case = TRUE),
+    !is.na(`p-value (adjusted)`)
+  )
+```
 
 ```{r}
 # Creating the summary table 
@@ -909,6 +928,5 @@ View(GO_BP_Summary)
 # Save as csv
 write.csv(GO_BP_Summary,"GO_BP_Summary.csv", row.names = FALSE)
 ```
-
 
 
