@@ -75,7 +75,7 @@ echo "End of fastq conversion"
 ```
 
 ## [3] QC of the sequences with fastqc
-Performing quality control on these sequences to access the quality and to inform of any needed trimming.
+Performing quality control on these sequences to assess the quality and to inform of any needed trimming.
 Submitted SBATCH fastqc_job.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
@@ -145,7 +145,7 @@ echo "All samples trimmed!"
 ```
 
 ## [5] QC on these trimmed reads
-To access whether the adapters were successfully removed.
+To assess whether the adapters were successfully removed.
 Submitted SBATCH trimmed_fastqc.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
@@ -359,7 +359,7 @@ echo "End of star indexing"
 ------
 
 ## [8] Alignment with STAR
-Further cleaning of the trimmed reads were needed then an alignment was performed with the custom indexed genome.
+Further cleaning of the trimmed reads was needed then an alignment was performed with the custom indexed genome.
 Submitted SBATCH alignment.sh
 ```{bash, eval=FALSE}
 #!/bin/bash
@@ -589,6 +589,7 @@ write.csv(log2_rpkm, file="log2_rpkm_normalised.csv", row.names=TRUE)
 ```
 
 ------
+
 ## QC Visualisations
 
 ## [13] Boxplot
@@ -645,6 +646,7 @@ boxplot <- ggplot(RPKM_long,
     x = "",
     y = "log2 normalised RPKM"
   ) +
+  theme_bw()+
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   ggtitle("Boxplot of log2-RPKM for 6 Samples by Group")
 
@@ -814,7 +816,7 @@ write.csv(as.data.frame(ego_up),   "GO_BP_Up.csv",    row.names = FALSE)
 write.csv(as.data.frame(ego_down), "GO_BP_Down.csv",  row.names = FALSE)
 ```
 
-## [17] making Function Enrichmend GO analysis tables 
+## [17] making Functional Enrichment GO analysis tables 
 
 ```{r, message=FALSE, warning=FALSE}
 library(tidyr)
@@ -851,7 +853,7 @@ write.csv(go_up_df, "GO_BP_Up_Table.csv", row.names = FALSE)
 write.csv(go_down_df, "GO_BP_Down_Table.csv", row.names = FALSE)
 ```
 
-## [18] Creating a combined functional Enrichment GO table
+## [18] Creating a combined functional enrichment GO table
 
 ```{r, message=FALSE, warning=FALSE}
 # Header for UP genes
@@ -876,18 +878,16 @@ go_combined <- rbind(
 write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
 ```
 
-## [19] Creating GO_Biolocical_Processes_Analysis_SummaryTable 
+## [19] Creating GO Biological Processes Analysis Summary Table 
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 # load the libraries 
 library(readr)
 library(dplyr)
 library(tidyr)
-```
-```{r}
+
 df <- read_csv("GO_BP_Combined.csv")
-```
-```{r}
+
 # Creating the regulation column
 df <- df %>%
   mutate(
@@ -902,15 +902,13 @@ df <- df %>%
     !grepl("^GO terms for", `GO Term`, ignore.case = TRUE),
     !is.na(`p-value (adjusted)`)
   )
-```
 
-```{r}
 # Creating the summary table 
 GO_BP_Summary <- df %>%
   group_by(regulation) %>%          # splits the data into upregulated & downregulated
   arrange(`p-value (adjusted)`) %>%  # sorts the groups from most significant to least significant 
   slice_head(n = 10) %>%            # takes the first 10 rows from each group 
-  select(                     
+  dplyr::select(                     
     regulation,
     `GO Term`,
     `p-value (adjusted)`,
@@ -918,15 +916,10 @@ GO_BP_Summary <- df %>%
     `f (genes in category)`,
     `Genes in category from cluster`
   )
-```
 
-```{r}
 View(GO_BP_Summary)
-```
 
-```{r}
 # Save as csv
 write.csv(GO_BP_Summary,"GO_BP_Summary.csv", row.names = FALSE)
 ```
-
 
