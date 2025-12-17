@@ -607,6 +607,181 @@ print(volcano_plot)
 # Save the plot
 ggsave("Volcano_Plot.png", plot = volcano_plot, width = 7, height = 7, units = "in")
 ```
+#load data into R
+df <- read.table("C:/Users/ahuss/Downloads/gene_counts.txt",
+                 header=TRUE, row.names=1)
+#load RPKM data into R
+RPKM <- read.csv("C:/Users/ahuss/Desktop/log2_rpkm_normalised.csv", header = TRUE)
+
+#to view the data
+view(RPKM)
+View(df)
+
+#load the package
+library(ggplot2)
+
+#summary of the dataframe - for boxplot, min, Q1, Q2, Q3, max, median, mean
+summary(df)
+
+#load the package
+library(tidyverse)
+
+#convert the dataframe into a long format for the values and grouping variables to compare distributions across groups
+RPKM_long <- RPKM %>%
+  pivot_longer(
+    cols = -X,               
+    names_to = "Sample",
+    values_to = "log2_RPKM"
+  )
+
+#rename the column for clarity
+RPKM_long <- RPKM_long %>% rename(Geneid = X)
+
+# group damples into the two groups
+RPKM_long <- RPKM_long %>%
+  mutate(Group = case_when(
+    Sample %in% c("SRR1166442_Aligned.sortedByCoord.out.bam",
+                  "SRR1166443_Aligned.sortedByCoord.out.bam",
+                  "SRR1166444_Aligned.sortedByCoord.out.bam ") ~ "Glucose-grown",
+    Sample %in% c("SRR1166445_Aligned.sortedByCoord.out.bam",
+                  "SRR1166446_Aligned.sortedByCoord.out.bam",
+                  "SRR1166447_Aligned.sortedByCoord.out.bam") ~ "Cellobiose-grown"
+  ))
+
+
+
+#remove trailing spaces in sample names to ensure consistent string matching
+RPKM_long <- RPKM_long %>%
+  mutate(Sample = str_trim(Sample))
+
+#separate the group columns
+RPKM_long <- RPKM_long %>%
+  mutate(Group = case_when(
+    Sample %in% c("SRR1166442_Aligned.sortedByCoord.out.bam",
+                  "SRR1166443_Aligned.sortedByCoord.out.bam",
+                  "SRR1166444_Aligned.sortedByCoord.out.bam") ~ "Glucose-grown",
+    Sample %in% c("SRR1166445_Aligned.sortedByCoord.out.bam",
+                  "SRR1166446_Aligned.sortedByCoord.out.bam",
+                  "SRR1166447_Aligned.sortedByCoord.out.bam") ~ "Cellobiose-grown"
+  ))
+
+
+#plot the data in the boxplot
+p <- ggplot(RPKM_long, aes(x = Sample, y = log2_RPKM, color = Group)) +
+  geom_boxplot(outlier.shape = NA, coef = 0) +
+  stat_boxplot(geom = "errorbar", width = 0.3, linewidth = 0.8) +
+  scale_color_manual(values = c("Glucose-grown" = "blue",
+                                "Cellobiose-grown" = "red")) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle("Boxplot of log2-RPKM for 6 Samples by Group")
+
+#print the plot
+p
+
+#save the plot
+ggsave("~/Desktop/ABCC_plot.png", plot = p, width = 10, height = 6, dpi = 300)
+
+#create the hierarchical cluster plot
+#select the columns
+sample_cols <- c(
+  "SRR1166442_Aligned.sortedByCoord.out.bam",
+  "SRR1166443_Aligned.sortedByCoord.out.bam",
+  "SRR1166444_Aligned.sortedByCoord.out.bam",
+  "SRR1166445_Aligned.sortedByCoord.out.bam",
+  "SRR1166446_Aligned.sortedByCoord.out.bam",
+  "SRR1166447_Aligned.sortedByCoord.out.bam"
+)
+
+#install and load the heatmap packages
+install.packages("pheatmap")
+library(pheatmap)
+
+#hierarchical clustering
+
+#calculate the distance matrix for clustering, describing the differences between samples
+d <- dist(expr_t)
+
+#take the matrix and perform the hierarchical clustering
+hc <- hclust(d, method = "complete")
+
+#plot the hierarchical clustering plot
+plot(hc, main = "Hierarchical Clustering of 6 Samples")
+
+#highlightes the two clusters and draw the rectngles around them
+rect.hclust(hc, k = 2, border = "red")
+
+#produce discrete clusters tp assign each observation to the cluster
+clusters <- cutree(hc, k = 2)
+
+#count missing values 
+sum(is.na(expr_matrix))
+
+#count the infinite values in the dataset
+sum(is.infinite(as.matrix(expr_matrix)))
+
+#count any rows with zero variance before removing any rows
+sum(apply(expr_matrix, 1, sd) == 0)
+
+#remove rows with zero variance
+expr_matrix <- expr_matrix[apply(expr_matrix, 1, sd) != 0, ]
+
+#scale the rows
+expr_scaled <- t(scale(t(expr_matrix)))
+
+#load the package
+library(pheatmap)
+
+#extracts the colums corresponding to sample collumns
+expr_matrix <- RPKM[, sample_cols]
+
+#converts the extracted data into a matrix
+expr_matrix <- as.matrix(expr_matrix)
+
+#ensure the values are all numeric
+mode(expr_matrix) <- "numeric"
+
+# Remove zero-variance genes
+expr_matrix <- expr_matrix[apply(expr_matrix, 1, sd) != 0, ]
+
+# Row-scale
+expr_scaled <- t(scale(t(expr_matrix)))
+
+# Annotation
+rownames(annotation_col) <- sample_cols
+
+#annotate which cluster is for which sample
+annotation_col <- data.frame(
+  Condition = c(
+    SRR1166442_Aligned.sortedByCoord.out.bam = "Glucose",
+    SRR1166443_Aligned.sortedByCoord.out.bam = "Glucose",
+    SRR1166444_Aligned.sortedByCoord.out.bam = "Glucose",
+    SRR1166445_Aligned.sortedByCoord.out.bam = "Cellobiose",
+    SRR1166446_Aligned.sortedByCoord.out.bam = "Cellobiose",
+    SRR1166447_Aligned.sortedByCoord.out.bam = "Cellobiose"
+  )
+)
+
+#to identify visually which sample is for which sequence
+ann_colors <- list(
+  Condition = c(Cellobiose = "blue", Glucose = "yellow")
+)
+
+# generate Heatmap, split samples into groups based on condition, with annotations and linking the hierarchical clustering with custom colour palletes
+pheatmap(
+  expr_scaled,
+  column_split = annotation_col$Condition,
+  cluster_rows = FALSE,
+  cluster_cols = TRUE,
+  annotation_col = annotation_col,
+  annotation_colors = ann_colors,
+  clustering_method = "complete",
+  clustering_distance_cols = "correlation",
+  show_rownames = FALSE,
+  fontsize_col = 8,
+  color = colorRampPalette(c("blue", "blue", "yellow"))(100),
+  main = "Hierarchically clustered heatmap",
+)
 
 ## [13] RPKM Calculation
 Normalisation to Reads Per Kilobase of transcript per Million mapped reads (RPKM) needed for QC visualisations. 
@@ -740,6 +915,7 @@ go_combined <- rbind(
 # Save combined table as a csv
 write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
 ```
+
 
 
 
