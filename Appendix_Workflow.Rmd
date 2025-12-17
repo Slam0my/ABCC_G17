@@ -713,6 +713,9 @@ expr_matrix <- expr_matrix[apply(expr_matrix, 1, sd) != 0, ]
 #Scale each gene (row)
 expr_scaled <- t(scale(t(expr_matrix)))
 
+# Transpose so that rows = samples, columns = genes
+expr_t <- t(expr_scaled) 
+
 #calculate the distance matrix for clustering, describing the differences between samples
 d <- dist(expr_t)
 
@@ -760,6 +763,14 @@ expr_matrix <- expr_matrix[apply(expr_matrix, 1, sd) != 0, ]
 
 # Row-scale
 expr_scaled <- t(scale(t(expr_matrix)))
+
+#annotation data frame for samples
+annotation_col <- data.frame(
+  Condition = c(
+    "Glucose", "Glucose", "Glucose",
+    "Cellobiose", "Cellobiose", "Cellobiose"
+  )
+)
 
 # Annotation
 rownames(annotation_col) <- sample_cols
@@ -929,6 +940,7 @@ go_combined <- rbind(
 # Save combined table as a csv
 write.csv(go_combined, "GO_BP_Combined.csv", row.names = FALSE)
 ```
+
 
 
 
